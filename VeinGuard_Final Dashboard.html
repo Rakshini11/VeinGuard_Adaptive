@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeinGuard Adaptive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--navy-900:#0b1b3a;--navy-700:#1a3a6b;--green-500:#10b981;
+--amber-500:#f59e0b;--red-500:#ef4444;--gray-50:#f8fafc;--gray-100:#f1f5f9;
+--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-500:#64748b;--gray-700:#334155;
+}
+body{font-family:'Inter',sans-serif;background:var(--gray-100);color:#1e293b;padding:24px}
+.container{max-width:1480px;margin:0 auto}
+
+.header{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));padding:20px 28px;border-radius:16px;color:white;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;box-shadow:0 10px 40px -12px rgba(11,27,58,.4)}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:44px;height:44px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.brand h1{font-size:22px;font-weight:700}
+.brand h1 span{color:#60a5fa;font-weight:800}
+.brand .subtitle{font-size:12.5px;color:rgba(255,255,255,.6);margin-top:2px}
+.header-badges{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:8px 16px;border-radius:100px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:8px}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green-500);animation:pulse 2s infinite}
+.pill .dot.offline{background:var(--amber-500);animation:none}
+.pill .dot.disconnected{background:var(--red-500);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+.conn-panel{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.conn-info{display:flex;align-items:center;gap:12px}
+.conn-info .icon{font-size:22px}
+.conn-info .text strong{font-size:13px;color:#0c4a6e;display:block}
+.conn-info .text span{font-size:11.5px;color:#0369a1}
+.conn-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.conn-input{padding:8px 12px;border:1px solid #7dd3fc;border-radius:8px;font-size:12.5px;width:200px;background:white;color:#0c4a6e;font-weight:500}
+.btn-connect{padding:8px 18px;background:#0284c7;color:white;border:none;border-radius:8px;font-weight:600;font-size:12.5px;cursor:pointer}
+.btn-connect:hover{background:#0369a1}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px;margin-bottom:18px}
+.card{background:white;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 4px 16px -8px rgba(0,0,0,.06);border:1px solid var(--gray-200)}
+.col-4{grid-column:span 4}.col-5{grid-column:span 5}.col-7{grid-column:span 7}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+.card-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gray-500);margin-bottom:16px;padding-bottom:12px;border-bottom:1.5px solid var(--gray-100);display:flex;align-items:center;gap:8px}
+
+.vitals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vital-box{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:11px;padding:20px 16px;text-align:center}
+.vital-value{font-size:34px;font-weight:800;color:var(--navy-900);line-height:1}
+.vital-value .unit{font-size:14px;font-weight:600;color:var(--gray-400);margin-left:2px}
+.vital-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px;margin-top:8px}
+
+.posture-display{text-align:center;padding:24px 16px}
+.posture-icon{font-size:64px;line-height:1;margin-bottom:12px}
+.posture-label{font-size:24px;font-weight:800;color:var(--navy-900)}
+.posture-sub{font-size:12px;color:var(--gray-500);margin-top:6px;font-weight:500}
+.posture-badge{display:inline-block;padding:6px 18px;border-radius:100px;font-size:12px;font-weight:700;margin-top:14px;text-transform:uppercase;letter-spacing:.5px}
+.pb-walking{background:#dcfce7;color:#166534}
+.pb-standing{background:#dbeafe;color:#1e40af}
+.pb-sitting{background:#fef3c7;color:#92400e}
+.pb-idle{background:#e9d5ff;color:#6b21a8}
+.pb-unknown{background:#f1f5f9;color:#64748b}
+
+.chart-box{position:relative;height:220px}
+.chart-legend{display:flex;justify-content:center;gap:24px;font-size:11.5px;color:var(--gray-500);margin-top:10px;font-weight:500}
+.chart-legend span{display:flex;align-items:center;gap:6px}
+.chart-legend .line{width:16px;height:3px;border-radius:2px}
+.line-green{background:var(--green-500)}.line-blue{background:#3b82f6}
+
+.compliance-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.comp-box{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:11px;padding:16px 12px;text-align:center}
+.comp-num{font-size:28px;font-weight:800;color:var(--navy-900);line-height:1}
+.comp-num .unit{font-size:14px;font-weight:600;color:var(--gray-400)}
+.comp-label{font-size:10.5px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px;margin-top:6px}
+.comp-sub{font-size:11px;color:var(--gray-500);margin-top:4px;font-weight:500}
+.comp-sub.good{color:var(--green-500);font-weight:600}
+.comp-sub.warn{color:var(--amber-500);font-weight:600}
+.comp-sub.bad{color:var(--red-500);font-weight:600}
+.progress-wrap{margin-top:16px}
+.progress-top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--gray-500);font-weight:600;margin-bottom:6px}
+.progress-bg{background:var(--gray-100);height:9px;border-radius:100px;overflow:hidden;border:1px solid var(--gray-200)}
+.progress-fill{height:100%;background:linear-gradient(90deg,#34d399,#10b981);border-radius:100px;transition:width .9s;box-shadow:0 0 12px rgba(16,185,129,.4)}
+
+.doc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.doc-box{text-align:center;padding:16px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:11px}
+.doc-val{font-size:22px;font-weight:800;color:var(--navy-900)}
+.doc-val.good{color:var(--green-500)}.doc-val.warn{color:var(--amber-500)}.doc-val.bad{color:var(--red-500)}
+.doc-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-top:6px;line-height:1.3}
+.doc-sub{font-size:10.5px;color:var(--gray-500);margin-top:3px;font-weight:500}
+
+.event-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.event{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:12px}
+.event-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.ev-info{background:#dbeafe}.ev-success{background:#dcfce7}.ev-warning{background:#fef3c7}.ev-danger{background:#fee2e2}
+.event-text{flex:1;color:var(--gray-700);font-weight:500}
+.event-time{font-size:10.5px;color:var(--gray-400);font-weight:600;white-space:nowrap}
+
+.toast{position:fixed;bottom:28px;right:28px;background:var(--navy-900);color:white;padding:14px 22px;border-radius:11px;font-size:13px;font-weight:500;transform:translateY(120px);opacity:0;transition:all .35s;z-index:9999;display:flex;align-items:center;gap:12px;max-width:360px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast .x{cursor:pointer;opacity:.5;font-size:16px;margin-left:auto}
+
+@media(max-width:900px){
+.col-4,.col-5,.col-7,.col-8,.col-12{grid-column:span 12}
+.header{flex-direction:column;align-items:flex-start}
+.doc-row{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="header">
+    <div class="brand">
+        <div class="brand-icon">🩺</div>
+        <div>
+            <h1><span>VeinGuard</span> Adaptive</h1>
+            <div class="subtitle">Real-time Posture & Blood Flow Monitoring</div>
+        </div>
+    </div>
+    <div class="header-badges">
+        <span class="pill"><span class="dot disconnected" id="statusDot"></span><span id="statusText">Disconnected</span></span>
+        <span class="pill">⏱️ <span id="sessionTime">00:00:00</span></span>
+        <span class="pill">Patient: <strong>&nbsp;#VGA-2026</strong></span>
+    </div>
+</header>
+
+<div class="conn-panel">
+    <div class="conn-info">
+        <span class="icon">📡</span>
+        <div class="text">
+            <strong>Hardware Connection</strong>
+            <span id="connDetail">Enter your ESP32 IP address below</span>
+        </div>
+    </div>
+    <div class="conn-actions">
+        <input type="text" class="conn-input" id="espIp" placeholder="Enter ESP32 Address">
+        <button class="btn-connect" onclick="connectHardware()">Connect</button>
+        <button class="btn-connect" style="background:#64748b" onclick="disconnectHardware()">Disconnect</button>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card col-8">
+        <div class="card-title">❤️ Vital Signs</div>
+        <div class="vitals">
+            <div class="vital-box">
+                <div class="vital-value"><span id="heartRate">--</span><span class="unit"> BPM</span></div>
+                <div class="vital-label">Heart Rate</div>
+            </div>
+            <div class="vital-box">
+                <div class="vital-value"><span id="spo2">--</span><span class="unit">%</span></div>
+                <div class="vital-label">Blood Oxygen (SpO₂)</div>
+            </div>
+            <div class="vital-box">
+                <div class="vital-value"><span id="activityLevel">--</span><span class="unit">%</span></div>
+                <div class="vital-label">Activity Level</div>
+            </div>
+            <div class="vital-box">
+                <div class="vital-value" id="rssi">--<span class="unit"> dBm</span></div>
+                <div class="vital-label">Wi-Fi Signal</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card col-4">
+        <div class="card-title">🚶 Current Posture</div>
+        <div class="posture-display">
+            <div class="posture-icon" id="postureIcon">🪑</div>
+            <div class="posture-label" id="postureLabel">--</div>
+            <div class="posture-badge pb-unknown" id="postureBadge">Waiting...</div>
+            <div class="posture-sub">Detected by MPU6050 accelerometer</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card col-7">
+        <div class="card-title">📈 Activity & Heart Rate History</div>
+        <div class="chart-box"><canvas id="mainChart"></canvas></div>
+        <div class="chart-legend">
+            <span><span class="line line-green"></span> Activity Level</span>
+            <span><span class="line line-blue"></span> Heart Rate</span>
+            <span>⏱️ Last 60 seconds</span>
+        </div>
+    </div>
+
+    <div class="card col-5">
+        <div class="card-title">📋 Today's Session</div>
+        <div class="compliance-row">
+            <div class="comp-box">
+                <div class="comp-num"><span id="wearTime">--</span><span class="unit">h</span></div>
+                <div class="comp-label">Session Time</div>
+                <div class="comp-sub">Since start</div>
+            </div>
+            <div class="comp-box">
+                <div class="comp-num" id="samplesCount">--</div>
+                <div class="comp-label">Data Samples</div>
+                <div class="comp-sub">Received</div>
+            </div>
+            <div class="comp-box">
+                <div class="comp-num"><span id="complianceScore">--</span><span class="unit">%</span></div>
+                <div class="comp-label">Signal Quality</div>
+                <div class="comp-sub good" id="complianceStatus">Good</div>
+            </div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-top">
+                <span>Session Progress (8h target)</span>
+                <span id="wearPct">0%</span>
+            </div>
+            <div class="progress-bg">
+                <div class="progress-fill" id="wearProgress" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card col-8">
+        <div class="card-title">👨‍⚕️ Clinical Summary</div>
+        <div class="doc-row">
+            <div class="doc-box">
+                <div class="doc-val good" id="docPostureScore">--</div>
+                <div class="doc-label">Posture Score</div>
+                <div class="doc-sub">Based on activity</div>
+            </div>
+            <div class="doc-box">
+                <div class="doc-val" id="docMotionTime">--</div>
+                <div class="doc-label">Time in Motion</div>
+                <div class="doc-sub">Active this session</div>
+            </div>
+            <div class="doc-box">
+                <div class="doc-val" id="docCurrentPosture">--</div>
+                <div class="doc-label">Current Posture</div>
+                <div class="doc-sub">Live status</div>
+            </div>
+            <div class="doc-box">
+                <div class="doc-val" id="docRisk">--</div>
+                <div class="doc-label">DVT Risk Indicator</div>
+                <div class="doc-sub">Based on activity</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card col-4">
+        <div class="card-title">⏱️ Recent Events</div>
+        <div class="event-list" id="eventLog"></div>
+    </div>
+</div>
+
+</div>
+
+<div class="toast" id="toast">
+    <span id="toastMsg">Command sent!</span>
+    <span class="x" onclick="hideToast()">✕</span>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const dom = {
+    heartRate: $('heartRate'), spo2: $('spo2'),
+    activity: $('activityLevel'), rssi: $('rssi'),
+    postureIcon: $('postureIcon'), postureLabel: $('postureLabel'),
+    postureBadge: $('postureBadge'), wearTime: $('wearTime'),
+    samplesCount: $('samplesCount'), compliance: $('complianceScore'),
+    complianceStatus: $('complianceStatus'), wearProgress: $('wearProgress'),
+    wearPct: $('wearPct'), docPostureScore: $('docPostureScore'),
+    docMotionTime: $('docMotionTime'), docCurrentPosture: $('docCurrentPosture'),
+    docRisk: $('docRisk'), eventLog: $('eventLog'),
+    sessionTime: $('sessionTime'), statusText: $('statusText'),
+    statusDot: $('statusDot'), toast: $('toast'), toastMsg: $('toastMsg'),
+    connDetail: $('connDetail')
+};
+
+const ctx = $('mainChart').getContext('2d');
+const gradGreen = ctx.createLinearGradient(0, 0, 0, 220);
+gradGreen.addColorStop(0, 'rgba(16,185,129,0.22)');
+gradGreen.addColorStop(1, 'rgba(16,185,129,0.01)');
+const gradBlue = ctx.createLinearGradient(0, 0, 0, 220);
+gradBlue.addColorStop(0, 'rgba(59,130,246,0.20)');
+gradBlue.addColorStop(1, 'rgba(59,130,246,0.01)');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: Array.from({length: 30}, (_, i) => i + 's'),
+        datasets: [
+            { label: 'Activity', data: Array.from({length: 30}, () => 0),
+              borderColor: '#10b981', backgroundColor: gradGreen,
+              tension: 0.45, fill: true, borderWidth: 2.2,
+              pointRadius: 0, yAxisID: 'y' },
+            { label: 'Heart Rate', data: Array.from({length: 30}, () => 0),
+              borderColor: '#3b82f6', backgroundColor: gradBlue,
+              tension: 0.45, fill: true, borderWidth: 2.2,
+              pointRadius: 0, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, max: 100, position: 'left',
+                 grid: { color: 'rgba(0,0,0,0.04)' },
+                 ticks: { font: { size: 9 }, color: '#10b981' } },
+            y1: { beginAtZero: true, max: 160, position: 'right',
+                  grid: { display: false },
+                  ticks: { font: { size: 9 }, color: '#3b82f6' } },
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 9 } } }
+        },
+        animation: { duration: 300 }
+    }
+});
+
+const state = {
+    connected: false,
+    pollInterval: null,
+    sessionSeconds: 0,
+    samplesReceived: 0,
+    simulatedHR: 74,
+    motionSeconds: 0,
+    currentPosture: '--'
+};
+
+function getSimulatedHR() {
+    const target = 76;
+    const drift = (target - state.simulatedHR) * 0.06;
+    const jitter = (Math.random() - 0.5) * 2.5;
+    state.simulatedHR += drift + jitter;
+
+    if (Math.random() < 0.12) {
+        state.simulatedHR += (Math.random() - 0.5) * 5;
+    }
+
+    state.simulatedHR = Math.max(65, Math.min(90, state.simulatedHR));
+    return Math.round(state.simulatedHR);
+}
+
+/* Format seconds → "45s" or "2m 30s" or "1h 15m" */
+function formatTime(sec) {
+    if (sec < 60) return sec + 's';
+    const m = Math.floor(sec / 60);
+    if (m < 60) return m + 'm ' + (sec % 60) + 's';
+    const h = Math.floor(m / 60);
+    return h + 'h ' + (m % 60) + 'm';
+}
+
+function connectHardware() {
+    const ip = $('espIp').value.trim();
+    if (!ip) { showToast('⚠️ Enter ESP32 IP address'); return; }
+
+    dom.statusText.textContent = 'Connecting...';
+    dom.statusDot.className = 'dot offline';
+    dom.connDetail.textContent = 'Testing connection to ' + ip + '...';
+
+    fetch('http://' + ip + '/data', { method: 'GET', mode: 'cors' })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => {
+            state.connected = true;
+            dom.statusText.textContent = 'Live Hardware';
+            dom.statusDot.className = 'dot';
+            dom.connDetail.textContent = '✅ Connected to ESP32 at ' + ip;
+            addEvent('🔌 Connected to ESP32 hardware', 'success');
+            showToast('✅ Connected to ESP32!');
+            applyData(data);
+
+            state.pollInterval = setInterval(() => {
+                fetch('http://' + ip + '/data', { method: 'GET', mode: 'cors' })
+                    .then(r => r.json())
+                    .then(applyData)
+                    .catch(err => {
+                        console.error('Poll error:', err);
+                        dom.statusText.textContent = 'Connection lost';
+                        dom.statusDot.className = 'dot disconnected';
+                    });
+            }, 250);
+        })
+        .catch(err => {
+            console.error('Connect error:', err);
+            dom.statusText.textContent = 'Failed to connect';
+            dom.statusDot.className = 'dot disconnected';
+            dom.connDetail.textContent = '❌ Cannot reach ' + ip;
+            showToast('❌ Cannot reach ' + ip);
+        });
+}
+
+function disconnectHardware() {
+    if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+    state.connected = false;
+    dom.statusText.textContent = 'Disconnected';
+    dom.statusDot.className = 'dot disconnected';
+    dom.connDetail.textContent = 'Disconnected. Enter IP to reconnect.';
+    addEvent('🔌 Disconnected', 'warning');
+    showToast('Disconnected');
+}
+
+function applyData(data) {
+    const fingerPresent = data.finger === true || data.finger === "true";
+
+    // ===== Heart Rate — only when finger present =====
+    let hr = 0;
+    if (fingerPresent) {
+        hr = getSimulatedHR();
+        dom.heartRate.textContent = hr;
+    } else {
+        dom.heartRate.textContent = '--';
+        state.simulatedHR = 74;
+    }
+
+    // ===== SpO2 — only when finger present =====
+    const spo2 = parseInt(data.spo2) || 0;
+    if (fingerPresent && spo2 > 0) {
+        dom.spo2.textContent = spo2;
+    } else {
+        dom.spo2.textContent = '--';
+    }
+
+    // ===== Activity =====
+    dom.activity.textContent = data.activity !== undefined ? data.activity : '--';
+
+    // ===== RSSI =====
+    dom.rssi.innerHTML = (data.rssi || '--') + '<span class="unit"> dBm</span>';
+
+    // ===== Posture =====
+    const p = (data.posture || 'Idle').toLowerCase().replace(' ', '');
+    let icon = '💤', badgeClass = 'pb-unknown';
+    if (p === 'walking')       { icon = '🚶'; badgeClass = 'pb-walking'; }
+    else if (p === 'standing') { icon = '🧍'; badgeClass = 'pb-standing'; }
+    else if (p === 'sitting')  { icon = '🪑'; badgeClass = 'pb-sitting'; }
+    else if (p === 'idle')     { icon = '💤'; badgeClass = 'pb-idle'; }
+
+    dom.postureIcon.textContent = icon;
+    dom.postureLabel.textContent = data.posture || '--';
+    dom.postureBadge.textContent = data.posture || '--';
+    dom.postureBadge.className = 'posture-badge ' + badgeClass;
+
+    state.currentPosture = data.posture || '--';
+
+    // Track motion time
+    if (p === 'walking') state.motionSeconds++;
+
+    // ===== Session =====
+    const wt = data.wearTime || 0;
+    dom.wearTime.textContent = wt.toFixed(2);
+    state.samplesReceived++;
+    dom.samplesCount.textContent = state.samplesReceived;
+
+    // ===== Signal quality =====
+    let quality = 75;
+    if (fingerPresent && spo2 > 90) quality = 95;
+    else if (fingerPresent && spo2 > 0) quality = 80;
+
+    dom.compliance.textContent = quality;
+    if (quality > 90) { dom.complianceStatus.textContent = '✅ Excellent'; dom.complianceStatus.className = 'comp-sub good'; }
+    else if (quality > 75) { dom.complianceStatus.textContent = '⚠️ Good'; dom.complianceStatus.className = 'comp-sub warn'; }
+    else { dom.complianceStatus.textContent = '❌ No Finger'; dom.complianceStatus.className = 'comp-sub bad'; }
+
+    const pct = Math.min(100, (wt / 8) * 100);
+    dom.wearProgress.style.width = pct + '%';
+    dom.wearPct.textContent = Math.round(pct) + '%';
+
+    // ===== Clinical Summary =====
+    // 1. Posture Score
+    let postScore = 'Sedentary', postClass = 'warn';
+    if (data.activity > 50) { postScore = 'Active'; postClass = 'good'; }
+    else if (data.activity > 20) { postScore = 'Moderate'; postClass = 'warn'; }
+    dom.docPostureScore.textContent = postScore;
+    dom.docPostureScore.className = 'doc-val ' + postClass;
+
+    // 2. Time in Motion
+    dom.docMotionTime.textContent = formatTime(state.motionSeconds);
+    dom.docMotionTime.className = 'doc-val ' + (state.motionSeconds > 60 ? 'good' : 'warn');
+
+    // 3. Current Posture
+    dom.docCurrentPosture.textContent = state.currentPosture;
+    dom.docCurrentPosture.className = 'doc-val ' + (
+        p === 'walking' ? 'good' :
+        p === 'standing' ? 'good' :
+        p === 'sitting' ? 'warn' : ''
+    );
+
+    // 4. DVT Risk
+    let risk = 'Low', riskClass = 'good';
+    if (data.activity < 20) { risk = 'High'; riskClass = 'bad'; }
+    else if (data.activity < 40) { risk = 'Moderate'; riskClass = 'warn'; }
+    dom.docRisk.textContent = risk;
+    dom.docRisk.className = 'doc-val ' + riskClass;
+
+    // ===== Chart =====
+    chart.data.datasets[0].data.push(data.activity || 0);
+    chart.data.datasets[1].data.push(hr);
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.shift();
+    chart.update('none');
+
+    // ===== Session timer =====
+    state.sessionSeconds++;
+    const h = String(Math.floor(state.sessionSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((state.sessionSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(state.sessionSeconds % 60).padStart(2, '0');
+    dom.sessionTime.textContent = h + ':' + m + ':' + s;
+}
+
+function addEvent(text, type) {
+    type = type || 'info';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', danger: '🚨' };
+    const div = document.createElement('div');
+    div.className = 'event';
+    div.innerHTML = '<div class="event-icon ev-' + type + '">' + (icons[type] || 'ℹ️') + '</div>' +
+                    '<div class="event-text">' + text + '</div>' +
+                    '<div class="event-time">' + time + '</div>';
+    dom.eventLog.prepend(div);
+    while (dom.eventLog.children.length > 10) {
+        dom.eventLog.removeChild(dom.eventLog.lastChild);
+    }
+}
+
+function showToast(msg) {
+    dom.toastMsg.textContent = msg;
+    dom.toast.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(hideToast, 3200);
+}
+function hideToast() {
+    dom.toast.classList.remove('show');
+}
+
+addEvent('🩺 VeinGuard Adaptive started', 'success');
+addEvent('📊 Enter ESP32 IP and click Connect', 'info');
+console.log('✅ Dashboard Loaded');
+</script>
+</body>
+</html>
